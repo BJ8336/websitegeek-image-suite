@@ -104,3 +104,169 @@ export function getDateTimeOriginal(dataUrl) {
     return null
   }
 }
+
+// ---------------------------------------------------------------------
+// Camera / shot / location / dimension fields — a curated subset of the
+// full EXIF tag set, covering what people actually want to view or edit.
+// ---------------------------------------------------------------------
+
+function exifDateToInputValue(raw) {
+  const [datePart, timePart] = raw.split(' ')
+  const dateFormatted = datePart.replaceAll(':', '-')
+  return `${dateFormatted}T${(timePart || '00:00:00').slice(0, 5)}`
+}
+
+function inputValueToExifDate(value) {
+  const [datePart, timePart] = value.split('T')
+  return `${datePart.replaceAll('-', ':')} ${timePart}:00`
+}
+
+// EXIF stores shutter speeds as a rational — sub-second exposures are
+// conventionally written as "1/N" for readability, matching how every
+// camera and photo app displays them.
+function rationalToShutterString([num, den]) {
+  if (!num || !den) return ''
+  const seconds = num / den
+  if (seconds >= 1) return `${seconds}`
+  return `1/${Math.round(den / num)}`
+}
+
+function shutterStringToRational(str) {
+  const trimmed = str.trim()
+  if (trimmed.includes('/')) {
+    const [n, d] = trimmed.split('/').map(Number)
+    if (!n || !d) return null
+    return [n, d]
+  }
+  const seconds = Number(trimmed)
+  if (!seconds) return null
+  return [Math.round(seconds * 1000), 1000]
+}
+
+// GPS coordinates are stored as degrees/minutes/seconds rationals plus a
+// hemisphere ref (N/S, E/W) — converted here to/from a single signed
+// decimal-degrees number, which is what anyone actually typing a location
+// into a form expects to use.
+function decimalToDms(decimal) {
+  const abs = Math.abs(decimal)
+  const deg = Math.floor(abs)
+  const minFloat = (abs - deg) * 60
+  const min = Math.floor(minFloat)
+  const sec = (minFloat - min) * 60
+  return [
+    [deg, 1],
+    [min, 1],
+    [Math.round(sec * 100), 100],
+  ]
+}
+
+function dmsToDecimal(dms) {
+  const deg = dms[0][0] / dms[0][1]
+  const min = dms[1][0] / dms[1][1]
+  const sec = dms[2][0] / dms[2][1]
+  return deg + min / 60 + sec / 3600
+}
+
+export const ORIENTATION_LABELS = {
+  1: 'Normal',
+  2: 'Flipped horizontal',
+  3: 'Rotated 180°',
+  4: 'Flipped vertical',
+  5: 'Flipped + rotated 90° CCW',
+  6: 'Rotated 90° CW',
+  7: 'Flipped + rotated 90° CW',
+  8: 'Rotated 90° CCW',
+}
+
+export function getCameraFields(dataUrl) {
+  let exifObj
+  try {
+    exifObj = piexif.load(dataUrl)
+  } catch {
+    exifObj = { '0th': {}, Exif: {}, GPS: {}, '1st': {}, thumbnail: null }
+  }
+  const zeroth = exifObj['0th'] || {}
+  const exif = exifObj.Exif || {}
+  const gps = exifObj.GPS || {}
+
+  const fNumber = exif[piexif.ExifIFD.FNumber]
+  const exposureTime = exif[piexif.ExifIFD.ExposureTime]
+  const flash = exif[piexif.ExifIFD.Flash]
+  const dateTimeOriginal = exif[piexif.ExifIFD.DateTimeOriginal]
+
+  let latitude = ''
+  let longitude = ''
+  if (gps[piexif.GPSIFD.GPSLatitude] && gps[piexif.GPSIFD.GPSLatitudeRef]) {
+    const dec = dmsToDecimal(gps[piexif.GPSIFD.GPSLatitude])
+    latitude = gps[piexif.GPSIFD.GPSLatitudeRef] === 'S' ? -dec : dec
+  }
+  if (gps[piexif.GPSIFD.GPSLongitude] && gps[piexif.GPSIFD.GPSLongitudeRef]) {
+    const dec = dmsToDecimal(gps[piexif.GPSIFD.GPSLongitude])
+    longitude = gps[piexif.GPSIFD.GPSLongitudeRef] === 'W' ? -dec : dec
+  }
+
+  return {
+    make: zeroth[piexif.ImageIFD.Make] || '',
+    model: zeroth[piexif.ImageIFD.Model] || '',
+    lensModel: exif[piexif.ExifIFD.LensModel] || '',
+    aperture: fNumber ? (fNumber[0] / fNumber[1]).toFixed(1) : '',
+    shutterSpeed: exposureTime ? rationalToShutterString(exposureTime) : '',
+    iso: exif[piexif.ExifIFD.ISOSpeedRatings] || '',
+    flashFired: typeof flash === 'number' ? (flash & 0x1) === 1 : false,
+    dateTime: dateTimeOriginal ? exifDateToInputValue(dateTimeOriginal) : '',
+    latitude,
+    longitude,
+    imageWidth: zeroth[piexif.ImageIFD.ImageWidth] || '',
+    imageLength: zeroth[piexif.ImageIFD.ImageLength] || '',
+    orientation: zeroth[piexif.ImageIFD.Orientation] || 1,
+  }
+}
+
+export function setCameraFields(dataUrl, fields) {
+  let exifObj
+  try {
+    exifObj = piexif.load(dataUrl)
+  } catch {
+    exifObj = { '0th': {}, Exif: {}, GPS: {}, '1st': {}, thumbnail: null }
+  }
+  const zeroth = { ...exifObj['0th'] }
+  const exif = { ...exifObj.Exif }
+  const gps = { ...exifObj.GPS }
+
+  if (fields.make) zeroth[piexif.ImageIFD.Make] = fields.make
+  if (fields.model) zeroth[piexif.ImageIFD.Model] = fields.model
+  if (fields.lensModel) exif[piexif.ExifIFD.LensModel] = fields.lensModel
+
+  if (fields.aperture) exif[piexif.ExifIFD.FNumber] = [Math.round(Number(fields.aperture) * 10), 10]
+  if (fields.shutterSpeed) {
+    const rational = shutterStringToRational(fields.shutterSpeed)
+    if (rational) exif[piexif.ExifIFD.ExposureTime] = rational
+  }
+  if (fields.iso) exif[piexif.ExifIFD.ISOSpeedRatings] = Number(fields.iso)
+  exif[piexif.ExifIFD.Flash] = fields.flashFired ? 1 : 0
+
+  if (fields.dateTime) {
+    const formatted = inputValueToExifDate(fields.dateTime)
+    exif[piexif.ExifIFD.DateTimeOriginal] = formatted
+    zeroth[piexif.ImageIFD.DateTime] = formatted
+  }
+
+  if (fields.latitude !== '' && fields.latitude !== null && fields.latitude !== undefined) {
+    const lat = Number(fields.latitude)
+    gps[piexif.GPSIFD.GPSLatitudeRef] = lat >= 0 ? 'N' : 'S'
+    gps[piexif.GPSIFD.GPSLatitude] = decimalToDms(lat)
+  }
+  if (fields.longitude !== '' && fields.longitude !== null && fields.longitude !== undefined) {
+    const lon = Number(fields.longitude)
+    gps[piexif.GPSIFD.GPSLongitudeRef] = lon >= 0 ? 'E' : 'W'
+    gps[piexif.GPSIFD.GPSLongitude] = decimalToDms(lon)
+  }
+
+  if (fields.imageWidth) zeroth[piexif.ImageIFD.ImageWidth] = Number(fields.imageWidth)
+  if (fields.imageLength) zeroth[piexif.ImageIFD.ImageLength] = Number(fields.imageLength)
+  if (fields.orientation) zeroth[piexif.ImageIFD.Orientation] = Number(fields.orientation)
+
+  const updated = { ...exifObj, '0th': zeroth, Exif: exif, GPS: gps }
+  const exifBytes = piexif.dump(updated)
+  return piexif.insert(exifBytes, dataUrl)
+}

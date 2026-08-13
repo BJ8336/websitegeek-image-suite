@@ -54,6 +54,22 @@ export function baseName(filename) {
   return filename.replace(/\.[^./\\]+$/, '') || 'image'
 }
 
+// "Cover" fit: scale so the image fills the target rect with no gaps,
+// cropping overflow (as opposed to "contain", which would letterbox).
+export function drawCover(ctx, img, x, y, w, h) {
+  const scale = Math.max(w / img.width, h / img.height)
+  const drawW = img.width * scale
+  const drawH = img.height * scale
+  const dx = x + (w - drawW) / 2
+  const dy = y + (h - drawH) / 2
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  ctx.drawImage(img, dx, dy, drawW, drawH)
+  ctx.restore()
+}
+
 export function drawScaled(img, width, height) {
   const canvas = createCanvas(width, height)
   const ctx = canvas.getContext('2d')

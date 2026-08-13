@@ -3,7 +3,7 @@ import ToolHeader from '../../components/ToolHeader'
 import ImageDropzone from '../../components/ImageDropzone'
 import FreeProNote from '../../components/FreeProNote'
 import { getToolBySlug } from '../../data/toolsConfig'
-import { loadImageFromFile, createCanvas, canvasToBlob } from '../../lib/imageCore'
+import { loadImageFromFile, createCanvas, canvasToBlob, drawCover } from '../../lib/imageCore'
 import { downloadBlob } from '../../utils/downloadFile'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { useUpgradeModal } from '../../context/UpgradeModalContext'
@@ -40,21 +40,6 @@ const TEMPLATES = [
     cells: Array.from({ length: 6 }, (_, i) => ({ x: (i % 3) / 3, y: Math.floor(i / 3) / 2, w: 1 / 3, h: 0.5 })),
   },
 ]
-
-// "Cover" fit: scale so the image fills the cell with no gaps, cropping overflow.
-function drawCover(ctx, img, cellX, cellY, cellW, cellH) {
-  const scale = Math.max(cellW / img.width, cellH / img.height)
-  const drawW = img.width * scale
-  const drawH = img.height * scale
-  const dx = cellX + (cellW - drawW) / 2
-  const dy = cellY + (cellH - drawH) / 2
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(cellX, cellY, cellW, cellH)
-  ctx.clip()
-  ctx.drawImage(img, dx, dy, drawW, drawH)
-  ctx.restore()
-}
 
 function MergeImagesCollage() {
   const { isPro } = useSubscription()
