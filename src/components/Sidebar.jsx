@@ -8,18 +8,7 @@ import ToolIcon from './ToolIcon'
 import GoogleSignInButton from './GoogleSignInButton'
 import ThemeToggle from './ThemeToggle'
 
-// TODO: no hosted logo image exists yet for Image Suite — swap this for the
-// real hosted URL (same pattern as the other 3 suites: LOGO_URL constant +
-// <img>) once one is provided.
-function LogoGlyph() {
-  return (
-    <svg viewBox="0 0 36 36" className="h-full w-full">
-      <rect width="36" height="36" rx="8" fill="#0D9488" />
-      <circle cx="14" cy="14" r="3.5" fill="#ffffff" />
-      <path d="M6 27l8-9 5 5.5L26 13l6 14z" fill="#ffffff" opacity="0.9" />
-    </svg>
-  )
-}
+const LOGO_URL = 'https://websitegeek.net/wp-content/uploads/2026/08/image-suite.png'
 
 function GridIcon() {
   return (
@@ -130,7 +119,7 @@ function SidebarContent({ onNavigate }) {
     <div className="flex h-full flex-col" onClick={onNavigate}>
       <div className="flex items-center gap-2.5 px-4 py-5">
         <span className="h-9 w-9 shrink-0 overflow-hidden rounded-lg">
-          <LogoGlyph />
+          <img src={LOGO_URL} alt="" className="h-full w-full object-contain" />
         </span>
         <div className="min-w-0 flex-1 leading-tight">
           <p className="text-sm font-bold text-white">WebsiteGeek</p>
@@ -243,7 +232,7 @@ function Sidebar() {
           <MenuIcon />
         </button>
         <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md">
-          <LogoGlyph />
+          <img src={LOGO_URL} alt="" className="h-full w-full object-contain" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold text-white">WebsiteGeek Image Suite</span>
         <ThemeToggle />
