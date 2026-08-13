@@ -1,0 +1,68 @@
+# WebsiteGeek Image Suite — static hosting config (Apache / cPanel)
+#
+# This app uses BrowserRouter (real paths like /image-suite/crop-image), so
+# a direct hit or refresh on a tool URL is a real HTTP request the server has
+# to handle — there's no file at that path, so it must fall back to
+# index.html and let React Router render the matching route client-side.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /image-suite/
+
+  # Force HTTPS
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # SPA fallback: only for requests that aren't a real file or directory
+  # (JS/CSS/images/etc. are still served directly, untouched).
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Correct MIME type for ES module workers, in case a future tool needs one
+# (pdf.js-style `new Worker(url, { type: 'module' })`). Browsers strictly
+# require text/javascript for module workers — without this, Apache's
+# default MIME mapping for an unrecognized extension can break it silently.
+# (File Suite hit this exact bug in production; keeping the fix here
+# preemptively rather than waiting to rediscover it.)
+<IfModule mod_mime.c>
+  AddType text/javascript .mjs
+</IfModule>
+
+# Gzip compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/xml text/plain
+  AddOutputFilterByType DEFLATE application/javascript text/javascript application/json
+  AddOutputFilterByType DEFLATE application/xml application/rss+xml
+  AddOutputFilterByType DEFLATE image/svg+xml application/wasm
+</IfModule>
+
+# Cache headers for static assets (hashed filenames, so long cache is safe —
+# a new deploy produces new filenames and busts the cache automatically)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/wasm "access plus 1 year"
+
+  # index.html changes on every deploy and must always be re-checked
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(css|js|mjs|png|jpg|jpeg|gif|svg|webp|woff2|wasm)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

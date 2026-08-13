@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* User-toggled dark mode (not OS/prefers-color-scheme driven) — see
+   ThemeContext.jsx, which adds/removes `.dark` on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------
+   Dark mode overrides.
+
+   Recolors the shared handful of Tailwind utility classes tool components
+   use (bg-white, text-slate-*, border-slate-*, plus accent colors), scoped
+   to `.light-surface` — the main content area. The dark navy Sidebar lives
+   outside this scope on purpose and is untouched.
+
+   !important is required here: Tailwind's own utilities land in
+   `@layer utilities`, and in practice that still out-prioritizes these
+   plain rules despite them being unlayered and more specific — so
+   !important is the reliable way to win regardless. (Carried over from the
+   SEO Suite and File Suite, verified in-browser in both.)
+
+   IMPORTANT: never use opacity-suffixed utility classes (e.g. bg-teal-50/50)
+   for anything that needs to recolor in dark mode — Tailwind compiles those
+   to a distinct selector these override rules can't match, which silently
+   leaves the light-mode color showing through in dark mode. Use solid
+   classes only. (File Suite shipped this exact bug once; not repeating it.)
+   ------------------------------------------------------------------- */
+
+.dark .light-surface {
+  background-color: var(--color-slate-950) !important;
+  color-scheme: dark;
+}
+
+/* Backgrounds */
+.dark .light-surface .bg-white {
+  background-color: var(--color-slate-900) !important;
+}
+.dark .light-surface .bg-slate-50 {
+  background-color: var(--color-slate-950) !important;
+}
+.dark .light-surface .bg-slate-100 {
+  background-color: var(--color-slate-800) !important;
+}
+.dark .light-surface .bg-slate-200 {
+  background-color: var(--color-slate-700) !important;
+}
+
+/* Text */
+.dark .light-surface .text-slate-900 {
+  color: var(--color-slate-50) !important;
+}
+.dark .light-surface .text-slate-800 {
+  color: var(--color-slate-100) !important;
+}
+.dark .light-surface .text-slate-700 {
+  color: var(--color-slate-300) !important;
+}
+.dark .light-surface .text-slate-600 {
+  color: var(--color-slate-400) !important;
+}
+.dark .light-surface .text-slate-500 {
+  color: var(--color-slate-400) !important;
+}
+.dark .light-surface .text-slate-400 {
+  color: var(--color-slate-500) !important;
+}
+.dark .light-surface .text-slate-300 {
+  color: var(--color-slate-600) !important;
+}
+
+/* Borders */
+.dark .light-surface .border-slate-100 {
+  border-color: var(--color-slate-800) !important;
+}
+.dark .light-surface .border-slate-200 {
+  border-color: var(--color-slate-700) !important;
+}
+.dark .light-surface .border-slate-300 {
+  border-color: var(--color-slate-600) !important;
+}
+
+/* Teal accent (this product's brand color — SEO Suite is dark blue, File
+   Suite is orange, WebTools Suite is indigo (#0f0390), so all four sibling
+   products stay visually distinct while sharing the same layout language) */
+.dark .light-surface .bg-teal-50 {
+  background-color: var(--color-teal-950) !important;
+}
+.dark .light-surface .bg-teal-100 {
+  background-color: var(--color-teal-900) !important;
+}
+.dark .light-surface .text-teal-600 {
+  color: var(--color-teal-400) !important;
+}
+.dark .light-surface .text-teal-700 {
+  color: var(--color-teal-300) !important;
+}
+.dark .light-surface .text-teal-800 {
+  color: var(--color-teal-300) !important;
+}
+.dark .light-surface .border-teal-200 {
+  border-color: var(--color-teal-800) !important;
+}
+.dark .light-surface .border-teal-300 {
+  border-color: var(--color-teal-700) !important;
+}
+
+/* Red accent (errors) */
+.dark .light-surface .bg-red-50 {
+  background-color: var(--color-red-950) !important;
+}
+.dark .light-surface .bg-red-100 {
+  background-color: var(--color-red-900) !important;
+}
+.dark .light-surface .text-red-500 {
+  color: var(--color-red-400) !important;
+}
+.dark .light-surface .text-red-600 {
+  color: var(--color-red-400) !important;
+}
+.dark .light-surface .text-red-700 {
+  color: var(--color-red-300) !important;
+}
+.dark .light-surface .border-red-200 {
+  border-color: var(--color-red-800) !important;
+}
+
+/* Green accent (success) */
+.dark .light-surface .bg-green-50 {
+  background-color: var(--color-green-950) !important;
+}
+.dark .light-surface .bg-green-100 {
+  background-color: var(--color-green-900) !important;
+}
+.dark .light-surface .text-green-600 {
+  color: var(--color-green-400) !important;
+}
+.dark .light-surface .text-green-700 {
+  color: var(--color-green-300) !important;
+}
+.dark .light-surface .border-green-200 {
+  border-color: var(--color-green-800) !important;
+}
+
+/* Form controls — inputs/textareas/selects don't carry a `bg-white` class
+   (they rely on the browser's own default white form-control background),
+   so the rules above never touch them. Style them explicitly, including
+   text color from the start — the SEO Suite shipped this without a text
+   color once and it produced unreadable near-black-on-black text in every
+   tool with a plain input; not repeating that here. */
+.dark .light-surface input,
+.dark .light-surface textarea,
+.dark .light-surface select {
+  background-color: var(--color-slate-900) !important;
+  color: var(--color-slate-50) !important;
+}
+.dark .light-surface input::placeholder,
+.dark .light-surface textarea::placeholder {
+  color: var(--color-slate-500) !important;
+  opacity: 1 !important;
+}
